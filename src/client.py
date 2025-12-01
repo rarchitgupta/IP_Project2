@@ -56,6 +56,9 @@ class SimpleFTPClient:
                 self._send_phase()
                 self._receive_phase()
                 self._timeout_phase()
+        except Exception as e:
+            print(f"ERROR in main loop: {e}", file=sys.stderr)
+            raise
         finally:
             self.stop()
     
@@ -63,7 +66,12 @@ class SimpleFTPClient:
         """Send packets if window has space."""
         while self.next_seq < self.base + self.window_size and self.next_seq < len(self.segments):
             pkt = DataPacket(self.next_seq, self.segments[self.next_seq])
-            self.sock.sendto(pkt.serialize(), self.server_addr)
+            
+            try:
+                self.sock.sendto(pkt.serialize(), self.server_addr)
+            except (BlockingIOError, socket.error):
+                # Send buffer full, stop trying to send more for now
+                break
             
             if self.next_seq == self.base:
                 self.timer = time.time()
@@ -73,7 +81,7 @@ class SimpleFTPClient:
     def _receive_phase(self):
         """Non-blocking ACK reception with buffering."""
         try:
-            chunk, _ = self.sock.recvfrom(1024)
+            chunk, _ = self.sock.recvfrom(4096)  # Increased buffer size
             if chunk:
                 self.ack_buffer += chunk
         except (BlockingIOError, socket.error):

@@ -1,77 +1,60 @@
-# Simple-FTP with Go-Back-N ARQ Protocol
+# Task Automation Scripts
 
-Reliable file transfer over UDP using Go-Back-N Automatic Repeat Request.
+Automated scripts for running Phase 5 experiments.
 
-## Quick Start
+## Usage
 
-### Build & Test
-
-```bash
-make test    # All 32 tests pass
-```
-
-### Manual Run (Local Only)
+All scripts follow the same pattern:
 
 ```bash
-# Terminal 1: Server
-python3 src/server.py 7735 output.txt 0.05
-
-# Terminal 2: Client (N=4, MSS=500)
-python3 src/client.py 127.0.0.1 7735 input.txt 4 500
-
-# Terminal 3: Verify
-diff input.txt output.txt && echo "✓ Files match"
+python3 tasks/task_X.py --host <hostname> --file <input-file> [options]
 ```
 
-## Implementation Status
+Common options:
 
-- ✅ **Phase 1-4**: Complete (core protocol, testing)
+- `--port 7735` - Server port (default: 7735)
+- `--output results.txt` - Results file (default: taskX_results.txt)
+- `--runs 5` - Runs per parameter (default: 5)
 
-  - `src/checksum.py` - UDP-style 16-bit checksums
-  - `src/packet.py` - DataPacket and AckPacket serialization
-  - `src/server.py` - SimpleFTPServer (Go-Back-N receiver)
-  - `src/client.py` - SimpleFTPClient (Go-Back-N sender)
-  - `tests/` - 32 comprehensive tests (all passing)
+## Task Scripts
 
-- 📋 **Phase 5**: Experiments
-  - **TASK1.md** - Effect of window size N on transfer delay
-  - TASK2.md - Coming soon
-  - TASK3.md - Coming soon
+### task_1.py - Window Size Effect
 
-## Key Parameters (All Tunable)
+```bash
+python3 tasks/task_1.py --host 152.7.176.68 --file testfile_1mb.bin
+```
 
-- **N**: Window size (segments in flight)
-- **MSS**: Maximum segment size (bytes per segment)
-- **p**: Packet loss probability ∈ [0, 1]
+Tests N ∈ {1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024} with MSS=500, p=0.05.
+Outputs timing data to `task1_results.txt`.
 
-## Task 1: Window Size Experiments
+### task_2.py - MSS Effect
 
-See **TASK1.md** for complete instructions.
+```bash
+python3 tasks/task_2.py --host 152.7.176.68 --file testfile_1mb.bin
+```
 
-Quick summary:
+Tests MSS ∈ {100, 200, ..., 1000} bytes with N=64, p=0.05.
+Outputs timing data to `task2_results.txt`.
 
-- Vary N ∈ {1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024}
-- Fix MSS=500, p=0.05
-- Measure transfer delay over 5 runs per N value
-- Average results and plot
-- Compare performance across different window sizes
+### task_3.py - Loss Probability Effect
 
-## Protocol Details
+```bash
+python3 tasks/task_3.py --host 152.7.176.68 --file testfile_1mb.bin
+```
 
-**Go-Back-N ARQ**:
+Tests p ∈ {0.01, 0.02, ..., 0.10} with N=64, MSS=500.
+Outputs timing data to `task3_results.txt`.
 
-- Sliding window at sender (client)
-- In-order delivery at receiver (server)
-- Timeout-based retransmission of all unACKed segments
-- Probabilistic packet loss simulation
+## Prerequisites
 
-**Packet Format**:
+Server must be running:
 
-- Data packets: seq (32-bit) + checksum (16-bit) + type=0x5555 + data
-- ACK packets: seq (32-bit) + checksum=0 + type=0xAAAA
-- All in network byte order
+```bash
+python3 src/server.py 7735 output.bin 0.05
+```
 
-## See Also
+Input file needed:
 
-- `PROJECT2.md` - Full specification
-- `TASK1.md` - Task 1 experiment guide (window size effects)
+```bash
+dd if=/dev/urandom of=testfile_1mb.bin bs=1M count=1
+```

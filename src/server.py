@@ -54,6 +54,10 @@ class SimpleFTPServer:
         if pkt is None:
             return
         
+        # Detect new transfer: if we get segment 0 and expected is way ahead, reset
+        if pkt.seq_num == 0 and self.expected_seq > 100:
+            self.expected_seq = 0
+        
         if pkt.seq_num == self.expected_seq:
             self.file.write(pkt.data)
             self.file.flush()
